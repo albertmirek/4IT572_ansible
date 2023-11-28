@@ -5,11 +5,11 @@
   tasks:
     - name: Launch EC2 Instance
       ec2_instance:
-        instance_type: t2.micro
+        instance_type: t2.medium
         image_id: ami-0230bd60aa48260c6
         region: us-east-1
-        key_name: test
-        vpc_subnet_id: subnet-0bacb8a00bc2ecaf8
+        key_name: runner-ansible
+        vpc_subnet_id: subnet-0854dcf3147aff2cb
         count: 1
         network:
           assign_public_ip: yes
@@ -26,11 +26,11 @@
         groupname: launched
       loop: "{{ ec2_instance_result.instances }}"
 
-    - name: Wait for ssh connection
+    - name: Wait for SSH connection
       delegate_to: "{{ item.public_ip_address }}"
       wait_for_connection:
         delay: 30
-        timeout: 300
+        timeout: 360
       loop: "{{ ec2_instance_result.instances }}"
 
 - name: Configure EC2
@@ -45,30 +45,30 @@
           - docker
         state: latest
         update_cache: yes
-        become: yes
+      become: yes
     - service:
         name: docker
         state: started
         enabled: yes
-        become: yes
-    - name: Start Docker on startup
+      become: yes
+    - name: Start docker on startup
       shell: systemctl enable docker
       become: yes
     - name: Set rights to Docker
-      shell: usermod -a -g docker ec2-user
+      shell: usermod -a -G docker ec2-user
       become: yes
     - name: Get eshop from GIT
       git:
         repo: 'https://github.com/albertmirek/4IT572.git'
         dest: ./app
-        version: master
-    - name: Build Docker image
+    - name: Build Docker with eshop
       shell: cd app && docker build -t myeshop:latest .
       become: yes
     - name: Run Docker with eshop
-      shell: docker run -p 80:3000 myeshop:latest
+      shell: docker run -p 80:3000 myeshop
       async: 45
       poll: 0
       become: yes
     - wait_for:
-        port: 80
+        port:
+          80
